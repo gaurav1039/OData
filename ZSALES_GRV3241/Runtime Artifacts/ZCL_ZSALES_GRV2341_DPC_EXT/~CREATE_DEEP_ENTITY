@@ -1,0 +1,46 @@
+  METHOD /iwbep/if_mgw_appl_srv_runtime~create_deep_entity.
+
+    DATA: gs_expand TYPE zcl_zsales_grv2341_mpc_ext=>ts_deep,
+
+          gs_header TYPE vbak, "zcl_zsales_grv2341_mpc_ext=>ts_salesheader,
+          gt_header TYPE zcl_zsales_grv2341_mpc_ext=>tt_salesheader,
+          gs_item   TYPE zcl_zsales_grv2341_mpc_ext=>ts_salesitem,
+          gt_item   TYPE TABLE OF vbap, "zcl_zsales_grv2341_mpc_ext=>tt_salesitem.
+
+          wa_vbap   TYPE vbap.
+
+    "read entity data
+    TRY.
+        CALL METHOD io_data_provider->read_entry_data
+          IMPORTING
+            es_data = gs_expand.
+      CATCH /iwbep/cx_mgw_tech_exception .
+    ENDTRY.
+
+    MOVE-CORRESPONDING gs_expand TO gs_header.
+
+    MODIFY vbak FROM gs_header.
+
+*    gt_item[] = gs_expand-salesitemnav[].
+
+    LOOP AT gs_expand-salesitemnav INTO gs_item .
+
+      MOVE-CORRESPONDING gs_item TO wa_vbap.
+      MODIFY vbap FROM wa_vbap.
+
+    ENDLOOP.
+    TRY.
+        INSERT vbap FROM TABLE gt_item[].
+      CATCH cx_root.
+    ENDTRY.
+
+    copy_data_to_ref(
+      EXPORTING
+        is_data = gs_expand
+      CHANGING
+        cr_data = er_deep_entity
+    ).
+
+
+
+  ENDMETHOD.
