@@ -1,0 +1,19 @@
+  METHOD salesheaderset_update_entity.
+    DATA: wa_entity LIKE er_entity,
+          gs_vbak   TYPE vbak.
+
+    TRY.
+        CALL METHOD io_data_provider->read_entry_data
+          IMPORTING
+            es_data = wa_entity.
+      CATCH /iwbep/cx_mgw_tech_exception .
+    ENDTRY.
+
+    IF wa_entity IS NOT INITIAL.
+      MOVE-CORRESPONDING wa_entity TO gs_vbak.
+      MODIFY vbak FROM gs_vbak.
+
+      MOVE-CORRESPONDING gs_vbak TO er_entity.
+
+    ENDIF.
+  ENDMETHOD.
