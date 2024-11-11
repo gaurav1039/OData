@@ -1,0 +1,37 @@
+  METHOD salesitemset_get_entity.
+    DATA: lv_vbeln TYPE vbeln_va.
+    DATA: lv_posnr TYPE posnr.
+    DATA: wa_key LIKE LINE OF it_key_tab.
+
+    READ TABLE it_key_tab INTO wa_key WITH KEY name = 'Vbeln'.
+
+    IF sy-subrc IS INITIAL.
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = wa_key-value
+        IMPORTING
+          output = lv_vbeln.
+
+    ENDIF.
+
+    CLEAR wa_key.
+
+    READ TABLE it_key_tab INTO wa_key WITH KEY name = 'Posnr'.
+
+    IF sy-subrc IS INITIAL.
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = wa_key-value
+        IMPORTING
+          output = lv_posnr.
+
+    ENDIF.
+    CLEAR wa_key.
+    SELECT * FROM vbap INTO CORRESPONDING FIELDS OF er_entity
+        UP TO 100 ROWS
+            WHERE vbeln = lv_vbeln
+              AND posnr = lv_posnr.
+    ENDSELECT.
+  ENDMETHOD.
