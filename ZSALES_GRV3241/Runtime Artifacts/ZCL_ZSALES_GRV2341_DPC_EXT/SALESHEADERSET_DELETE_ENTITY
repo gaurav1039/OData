@@ -1,0 +1,19 @@
+  method SALESHEADERSET_DELETE_ENTITY.
+
+    data: lv_vbeln TYPE vbeln_va.
+
+    READ TABLE it_key_tab INTO DATA(GS_KEY_TAB) WITH KEY name = 'Vbeln'.
+
+     CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = GS_KEY_TAB-value
+        IMPORTING
+          output = lv_vbeln.
+
+    IF gs_key_tab-value IS NOT INITIAL.
+
+      DELETE FROM vbak WHERE vbeln = lv_vbeln.
+      DELETE FROM vbap WHERE vbeln = lv_vbeln.
+
+    ENDIF.
+  endmethod.
