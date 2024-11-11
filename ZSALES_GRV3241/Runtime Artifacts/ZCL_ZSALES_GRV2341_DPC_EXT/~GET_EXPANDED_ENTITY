@@ -1,0 +1,69 @@
+  method /IWBEP/IF_MGW_APPL_SRV_RUNTIME~GET_EXPANDED_ENTITY.
+
+   DATA: BEGIN OF ts_deep_entity.
+        INCLUDE   TYPE zcl_zsales_grv2341_mpc_ext=>ts_salesheader.
+    DATA: salesitemnav TYPE zcl_zsales_grv2341_mpc_ext=>tt_salesitem,
+          END OF ts_deep_entity.
+
+    DATA: it_deep_entity LIKE TABLE OF ts_deep_entity,
+          wa_deep_entity LIKE LINE OF it_deep_entity.
+
+    DATA: it_header TYPE TABLE OF zvbak,
+          wa_header TYPE zvbak,
+          it_item   TYPE TABLE OF zvbap.
+
+    DATA: wa_sales_item TYPE zcl_zsales_grv2341_mpc_ext=>ts_salesitem.
+
+    DATA(lv_entity_set_name) = io_tech_request_context->get_entity_set_name( ).
+
+    DATA: lv_vbeln TYPE vbeln_va.
+
+*    CONSTANTS: lc_expand_tech_clause  TYPE string VALUE 'SalesOrder/SalesItems'.
+
+    CLEAR : wa_deep_entity, er_entity.
+
+    READ TABLE it_key_tab INTO DATA(ls_key_tab) WITH KEY name = 'Vbeln'.
+    IF ls_key_tab-value IS NOT INITIAL.
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = ls_key_tab-value
+        IMPORTING
+          output = lv_vbeln.
+
+
+      SELECT SINGLE * FROM vbap
+        INTO CORRESPONDING FIELDS OF wa_header
+        WHERE vbeln = lv_vbeln.
+
+      IF sy-subrc = 0.
+        SELECT * FROM vbap INTO CORRESPONDING FIELDS OF TABLE it_item
+          WHERE vbeln = wa_header-vbeln.
+
+        MOVE-CORRESPONDING wa_header TO wa_deep_entity.
+      ENDIF.
+
+      LOOP AT it_item INTO DATA(wa_item) WHERE vbeln = wa_header-vbeln.
+        MOVE-CORRESPONDING wa_item TO wa_sales_item.
+        APPEND wa_sales_item TO wa_deep_entity-salesitemnav.
+        CLEAR: wa_sales_item, wa_item.
+      ENDLOOP.
+
+*      copy_data_to_ref(
+*        EXPORTING
+*          is_data = wa_deep_entity
+*        CHANGING
+*          cr_data = er_entity
+*      ).
+
+      CALL METHOD me->/iwbep/if_mgw_conv_srv_runtime~copy_data_to_ref
+        EXPORTING
+          is_data = wa_deep_entity
+        CHANGING
+          cr_data = er_entity.
+
+    ENDIF.
+*    INSERT lc_expand_tech_clause INTO TABLE et_expanded_tech_clauses.
+*
+
+  endmethod.
