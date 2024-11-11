@@ -1,0 +1,129 @@
+  METHOD salesheaderset_get_entityset.
+
+    SELECT * FROM vbak INTO CORRESPONDING FIELDS OF TABLE @et_entityset UP TO 50 ROWS.
+
+    DATA(lo_filter) = io_tech_request_context->get_filter( ).
+
+    DATA(lt_select) = lo_filter->get_filter_select_options( ).
+
+    DATA: ls_select_options LIKE LINE OF lt_select.
+    FIELD-SYMBOLS: <fs_data> TYPE any,
+                   <fs_fval> TYPE any.
+    DATA: lv_index TYPE sy-tabix.
+    DATA: lt_range_vbeln TYPE RANGE OF vbeln_va.
+
+    LOOP AT lt_select INTO ls_select_options.
+      TRANSLATE ls_select_options-property TO UPPER CASE. "#EC TRANSLANG
+      IF ls_select_options-property = 'VBELN'.
+
+        lo_filter->convert_select_option(
+          EXPORTING
+            is_select_option             = ls_select_options    " Key name
+          IMPORTING
+            et_select_option             = lt_range_vbeln    " Ranges table
+        ).
+
+        MOVE-CORRESPONDING lt_range_vbeln TO ls_select_options-select_options.
+*        CATCH /iwbep/cx_mgw_tech_exception.    "
+      ENDIF.
+
+
+      LOOP AT et_entityset ASSIGNING <fs_data>.
+        lv_index = sy-tabix.
+        ASSIGN COMPONENT ls_select_options-property OF STRUCTURE <fs_data> TO <fs_fval>.
+        CHECK sy-subrc EQ 0.
+        IF <fs_fval> NOT IN ls_select_options-select_options.
+          DELETE et_entityset INDEX lv_index.
+        ENDIF.
+      ENDLOOP.
+    ENDLOOP.
+
+*************************************************************************************
+
+    DATA: ls_data              LIKE LINE OF           et_entityset,
+          lt_headerdata        TYPE STANDARD TABLE OF bapi_epm_bp_header,
+          ls_headerdata        TYPE                   bapi_epm_bp_header,
+          lv_maxrows           TYPE                   bapi_epm_max_rows,
+          lv_top               TYPE                   string,
+          lv_skip              TYPE                   i,
+          lv_skiptoken         TYPE                   string,
+          lt_return            TYPE TABLE OF          bapiret2,
+          lo_message_container TYPE REF TO            /iwbep/if_message_container,
+          lt_filters           TYPE                   /iwbep/t_mgw_select_option,
+          ls_filter            TYPE                   /iwbep/s_mgw_select_option,
+          ls_so                TYPE                   /iwbep/s_cod_select_option,
+          lt_product_id        TYPE TABLE OF          bapi_epm_product_id_range,
+          ls_product_id        TYPE                   bapi_epm_product_id_range,
+          lt_supplier_name     TYPE TABLE OF          bapi_epm_supplier_name_range,
+          ls_supplier_name     TYPE                   bapi_epm_supplier_name_range,
+          lt_category          TYPE TABLE OF          bapi_epm_product_categ_range,
+          ls_category          TYPE                   bapi_epm_product_categ_range
+          .
+
+    DATA: lt_price TYPE RANGE OF bapi_epm_product_header-price,
+          ls_price LIKE LINE OF lt_price.
+
+*-get filter
+    lt_filters = io_tech_request_context->get_filter( )->get_filter_select_options( ).
+
+*-get filter for Vbeln
+    READ TABLE lt_filters WITH TABLE KEY property = 'Vbeln' INTO ls_filter.
+
+    IF sy-subrc EQ 0.
+      LOOP AT ls_filter-select_options INTO ls_so.
+        MOVE-CORRESPONDING ls_so TO ls_product_id.
+        INSERT ls_product_id INTO TABLE lt_product_id.
+      ENDLOOP.
+    ENDIF.
+
+**-get filter for category
+*    READ TABLE lt_filters WITH TABLE KEY property = 'CATEGORY' INTO ls_filter.
+*
+*    IF sy-subrc EQ 0.
+*      LOOP AT ls_filter-select_options INTO ls_so.
+*        MOVE-CORRESPONDING ls_so TO ls_category.
+*        INSERT ls_category INTO TABLE lt_category.
+*      ENDLOOP.
+*    ENDIF.
+*
+**-get filter for supplier name
+*    READ TABLE lt_filters WITH TABLE KEY property = 'SUPPLIER_NAME' INTO ls_filter.
+*
+*    IF sy-subrc EQ 0.
+*      LOOP AT ls_filter-select_options INTO ls_so.
+*        MOVE-CORRESPONDING ls_so TO ls_supplier_name.
+*        INSERT ls_supplier_name INTO TABLE lt_supplier_name.
+*      ENDLOOP.
+*    ENDIF.
+*
+*    CALL FUNCTION 'BAPI_EPM_PRODUCT_GET_LIST'
+**    EXPORTING
+**      MAX_ROWS              = lv_maxrows
+*      TABLES
+*        headerdata            = et_entityset
+*        selparamproductid     = lt_product_id
+*        selparamsuppliernames = lt_supplier_name
+*        selparamcategories    = lt_category
+**       RETURN                =
+*      .
+*
+**-get filter for Price
+*    READ TABLE lt_filters WITH TABLE KEY property = 'PRICE' INTO ls_filter.
+*
+*    IF sy-subrc EQ 0.
+*      LOOP AT ls_filter-select_options INTO ls_so.
+*        MOVE-CORRESPONDING ls_so TO ls_price.
+*        INSERT ls_price INTO TABLE lt_price.
+*      ENDLOOP.
+*    ENDIF.
+*
+** remove data returned by BAPI that does not match the
+** additional filter criteria for price
+*
+*    DELETE et_entityset WHERE price NOT IN lt_price.
+
+
+
+
+
+  ENDMETHOD.
