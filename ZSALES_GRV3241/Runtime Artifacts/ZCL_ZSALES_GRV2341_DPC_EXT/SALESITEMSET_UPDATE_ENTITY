@@ -1,0 +1,20 @@
+  method SALESITEMSET_UPDATE_ENTITY.
+
+ DATA: wa_entity LIKE er_entity,
+       gs_vbap TYPE vbap.
+
+    TRY.
+        CALL METHOD io_data_provider->read_entry_data
+          IMPORTING
+            es_data = wa_entity.
+      CATCH /iwbep/cx_mgw_tech_exception .
+    ENDTRY.
+
+    IF wa_entity IS NOT INITIAL.
+      MOVE-CORRESPONDING wa_entity TO gs_vbap.
+      MODIFY vbap FROM gs_vbap.
+
+      MOVE-CORRESPONDING wa_entity TO er_entity.
+
+    ENDIF.
+  endmethod.
