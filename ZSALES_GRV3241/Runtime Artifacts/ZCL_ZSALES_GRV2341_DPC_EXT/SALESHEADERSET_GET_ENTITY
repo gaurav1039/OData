@@ -1,0 +1,22 @@
+  method SALESHEADERSET_GET_ENTITY.
+
+ DATA: lv_vbeln TYPE vbeln_va.
+
+    READ TABLE it_key_tab ASSIGNING FIELD-SYMBOL(<fs_key>) WITH KEY name = 'Vbeln'.
+
+
+    IF sy-subrc IS INITIAL.
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = <fs_key>-value
+        IMPORTING
+          output = lv_vbeln.
+
+      SELECT * FROM vbak INTO CORRESPONDING FIELDS OF er_entity
+                  WHERE vbeln = lv_vbeln.
+      ENDSELECT.
+
+    ENDIF.
+
+  endmethod.
