@@ -1,0 +1,30 @@
+  METHOD salesitemset_get_entityset.
+
+    DATA: gs_key_tab TYPE /iwbep/s_mgw_name_value_pair.
+    DATA: lv_vbeln TYPE vbeln_va,
+          lv_posnr TYPE vbap-posnr.
+
+    IF it_key_tab IS NOT INITIAL.
+
+      READ TABLE it_key_tab INTO gs_key_tab WITH KEY name = 'Vbeln'.
+
+      lv_vbeln = gs_key_tab-value.
+
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = lv_vbeln   " C field
+        IMPORTING
+          output = lv_vbeln.    " Internal display of INPUT, any category
+
+
+      SELECT * FROM vbap INTO CORRESPONDING FIELDS OF TABLE et_entityset
+                                WHERE vbeln = lv_vbeln.
+    ELSE.
+
+      SELECT * FROM vbap INTO CORRESPONDING FIELDS OF TABLE @et_entityset UP TO 50 ROWS.
+    ENDIF.
+
+
+
+  ENDMETHOD.
