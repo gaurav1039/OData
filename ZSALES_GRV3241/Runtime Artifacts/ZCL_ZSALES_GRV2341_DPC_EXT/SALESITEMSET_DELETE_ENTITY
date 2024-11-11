@@ -1,0 +1,27 @@
+  METHOD salesitemset_delete_entity.
+
+    DATA: lv_vbeln TYPE vbeln_va,
+          lv_posnr    TYPE vbap-posnr.
+
+        read table it_key_tab into data(gs_key_1) with key name = 'Vbeln'.
+    READ TABLE it_key_tab INTO DATA(gs_key_2) WITH KEY name = 'Posnr'.
+
+    IF gs_key_1-value IS NOT INITIAL AND gs_key_2-value IS NOT INITIAL.
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = gs_key_1-value
+        IMPORTING
+          output = lv_vbeln.
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = gs_key_2-value
+        IMPORTING
+          output = lv_posnr.
+
+      DELETE FROM vbap WHERE vbeln = lv_vbeln
+                          AND posnr = lv_posnr.
+
+    ENDIF.
+  ENDMETHOD.
