@@ -15,3 +15,8 @@
 ![image](https://github.com/user-attachments/assets/f2f17931-b735-451f-a275-593581a149bd)
 
 ![image](https://github.com/user-attachments/assets/1423730d-6c76-4bbf-99b6-7b77160f21ad)
+
+For Function Import  separate project is created along with a custom table ZKGVBAK
+![image](https://github.com/user-attachments/assets/fad9b1e8-ab68-4257-b05f-ec810c356741)
+
+![image](https://github.com/user-attachments/assets/a3db2c36-8eab-4a72-b698-007f77d160f0)
