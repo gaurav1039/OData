@@ -1,0 +1,95 @@
+  METHOD /iwbep/if_mgw_appl_srv_runtime~execute_action.
+
+    DATA : gs_parameter LIKE LINE OF it_parameter,
+           gt_so        TYPE STANDARD TABLE OF zkgvbak,
+           gs_status    TYPE zcl_zsales_grv2342_mpc_ext=>ts_sostatus.
+
+    DATA : lv_kunnr     TYPE kunnr,
+           lv_vbeln     TYPE vbeln,
+           lv_status(3).
+
+    REFRESH : gt_so[].
+    CLEAR: er_data.
+
+    CASE iv_action_name.
+
+      WHEN 'GETSO'.
+
+        CLEAR: gs_parameter.
+        READ TABLE it_parameter INTO gs_parameter WITH KEY name = 'KUNNR'.
+        IF gs_parameter-value IS NOT INITIAL.
+
+          lv_kunnr = gs_parameter-value.
+
+          SELECT * FROM zkgvbak INTO CORRESPONDING FIELDS OF TABLE gt_so WHERE kunnr = 'GAURAV'.
+
+          copy_data_to_ref(
+            EXPORTING
+              is_data = gt_so
+            CHANGING
+              cr_data = er_data
+          ).
+
+        ENDIF.
+
+      WHEN 'GETUNRELEASED'.
+        SELECT * FROM zkgvbak INTO CORRESPONDING FIELDS OF TABLE gt_so WHERE status = ''.
+
+        copy_data_to_ref(
+          EXPORTING
+            is_data = gt_so
+          CHANGING
+            cr_data = er_data
+        ).
+
+      WHEN 'UPDATE_STATUS'.
+
+        CLEAR: gs_parameter.
+        READ TABLE it_parameter INTO gs_parameter WITH KEY name = 'VBELN'.
+        IF gs_parameter-value IS NOT INITIAL.
+
+          lv_vbeln = gs_parameter-value.
+
+          CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+            EXPORTING
+              input  = lv_vbeln
+            IMPORTING
+              output = lv_vbeln.
+
+        ENDIF.
+
+        CLEAR: gs_parameter.
+        READ TABLE it_parameter INTO gs_parameter WITH KEY name = 'STATUS'.
+        IF gs_parameter-value IS NOT INITIAL.
+
+          lv_status = gs_parameter-value.
+        ENDIF.
+
+        IF lv_vbeln IS NOT INITIAL AND
+           lv_status IS NOT INITIAL.
+          UPDATE zkgvbak SET status = lv_status
+                  WHERE vbeln = lv_vbeln.
+
+          IF sy-subrc = 0.
+            gs_status-vbeln = lv_vbeln.
+            gs_status-type = 'S'.
+            gs_status-message = 'Sales order status updated succesfully'.
+
+          ELSE.
+            gs_status-vbeln = lv_vbeln.
+            gs_status-type = 'E'.
+            gs_status-message = 'Error while wudating the status'.
+          ENDIF.
+
+        ELSE.
+          gs_status-message = 'Pass the required parameters'.
+        ENDIF.
+
+        copy_data_to_ref(
+       EXPORTING
+         is_data = gs_status
+       CHANGING
+         cr_data = er_data
+     ).
+    ENDCASE.
+  ENDMETHOD.
