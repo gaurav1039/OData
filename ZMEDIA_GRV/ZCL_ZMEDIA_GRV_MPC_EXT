@@ -1,0 +1,35 @@
+class ZCL_ZMEDIA_GRV_MPC_EXT definition
+  public
+  inheriting from ZCL_ZMEDIA_GRV_MPC
+  create public .
+
+public section.
+
+  methods DEFINE
+    redefinition .
+protected section.
+private section.
+ENDCLASS.
+
+
+
+CLASS ZCL_ZMEDIA_GRV_MPC_EXT IMPLEMENTATION.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_ZMEDIA_GRV_MPC_EXT->DEFINE
+* +-------------------------------------------------------------------------------------------------+
+* | [!CX!] /IWBEP/CX_MGW_MED_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  method DEFINE.
+    super->define( ).
+*      CATCH /iwbep/cx_mgw_med_exception.    "
+
+    model->get_entity_type( iv_entity_name = 'Media'
+        )->get_property( iv_property_name = 'Mimetype'
+        )->set_as_content_type( ).
+*      CATCH /iwbep/cx_mgw_med_exception.    " .
+*      CATCH /iwbep/cx_mgw_med_exception.    " .
+*      CATCH /iwbep/cx_mgw_med_exception.    "
+  endmethod.
+ENDCLASS.
