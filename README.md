@@ -20,3 +20,11 @@ For Function Import  separate project is created along with a custom table ZKGVB
 ![image](https://github.com/user-attachments/assets/fad9b1e8-ab68-4257-b05f-ec810c356741)
 
 ![image](https://github.com/user-attachments/assets/a3db2c36-8eab-4a72-b698-007f77d160f0)
+
+================================================
+
+Odata for calling Smartform pdf
+
+![image](https://github.com/user-attachments/assets/4db83f67-ac83-4e9e-a232-184d868c36e1)
+
+For entity Billing, mark 'Media' checkbox. 
