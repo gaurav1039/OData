@@ -13,7 +13,7 @@
       MOVE-CORRESPONDING wa_entity TO gs_vbak.
       MODIFY vbak FROM gs_vbak.
 
-      MOVE-CORRESPONDING gs_vbak TO er_entity.
+      MOVE-CORRESPONDING gs_vbak TO er_entity.        "here wa_entity should be used and not gs_vbak
 
     ENDIF.
   ENDMETHOD.
