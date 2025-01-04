@@ -1,0 +1,148 @@
+class ZCL_ZMEDIA_GRV_DPC_EXT definition
+  public
+  inheriting from ZCL_ZMEDIA_GRV_DPC
+  create public .
+
+public section.
+
+  methods /IWBEP/IF_MGW_APPL_SRV_RUNTIME~CREATE_STREAM
+    redefinition .
+  methods /IWBEP/IF_MGW_APPL_SRV_RUNTIME~GET_STREAM
+    redefinition .
+  methods /IWBEP/IF_MGW_APPL_SRV_RUNTIME~UPDATE_STREAM
+    redefinition .
+  methods /IWBEP/IF_MGW_APPL_SRV_RUNTIME~DELETE_STREAM
+    redefinition .
+protected section.
+private section.
+ENDCLASS.
+
+
+
+CLASS ZCL_ZMEDIA_GRV_DPC_EXT IMPLEMENTATION.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_ZMEDIA_GRV_DPC_EXT->/IWBEP/IF_MGW_APPL_SRV_RUNTIME~CREATE_STREAM
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_ENTITY_NAME                 TYPE        STRING(optional)
+* | [--->] IV_ENTITY_SET_NAME             TYPE        STRING(optional)
+* | [--->] IV_SOURCE_NAME                 TYPE        STRING(optional)
+* | [--->] IS_MEDIA_RESOURCE              TYPE        TY_S_MEDIA_RESOURCE
+* | [--->] IT_KEY_TAB                     TYPE        /IWBEP/T_MGW_NAME_VALUE_PAIR(optional)
+* | [--->] IT_NAVIGATION_PATH             TYPE        /IWBEP/T_MGW_NAVIGATION_PATH(optional)
+* | [--->] IV_SLUG                        TYPE        STRING
+* | [--->] IO_TECH_REQUEST_CONTEXT        TYPE REF TO /IWBEP/IF_MGW_REQ_ENTITY_C(optional)
+* | [<---] ER_ENTITY                      TYPE REF TO DATA
+* | [!CX!] /IWBEP/CX_MGW_BUSI_EXCEPTION
+* | [!CX!] /IWBEP/CX_MGW_TECH_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  method /IWBEP/IF_MGW_APPL_SRV_RUNTIME~CREATE_STREAM.
+
+  DATA(ls_media_grv) = VALUE zcl_zmedia_grv_mpc=>ts_media( client = sy-mandt
+                                                           filename = iv_slug
+                                                           mimetype = is_media_resource-mime_type
+                                                           value    = is_media_resource-value ).
+
+  INSERT zmedia_grv FROM @ls_media_grv.
+
+  if sy-subrc is initial.
+    copy_data_to_ref(
+      EXPORTING
+        is_data = ls_media_grv
+      CHANGING
+        cr_data = er_entity
+    ).
+  ENDIF.
+
+  endmethod.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_ZMEDIA_GRV_DPC_EXT->/IWBEP/IF_MGW_APPL_SRV_RUNTIME~DELETE_STREAM
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_ENTITY_NAME                 TYPE        STRING(optional)
+* | [--->] IV_ENTITY_SET_NAME             TYPE        STRING(optional)
+* | [--->] IV_SOURCE_NAME                 TYPE        STRING(optional)
+* | [--->] IT_KEY_TAB                     TYPE        /IWBEP/T_MGW_NAME_VALUE_PAIR(optional)
+* | [--->] IT_NAVIGATION_PATH             TYPE        /IWBEP/T_MGW_NAVIGATION_PATH(optional)
+* | [--->] IO_TECH_REQUEST_CONTEXT        TYPE REF TO /IWBEP/IF_MGW_REQ_ENTITY_D(optional)
+* | [!CX!] /IWBEP/CX_MGW_BUSI_EXCEPTION
+* | [!CX!] /IWBEP/CX_MGW_TECH_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  method /IWBEP/IF_MGW_APPL_SRV_RUNTIME~DELETE_STREAM.
+
+  DATA(it_keys) = io_tech_request_context->get_keys( ).
+  DATA(lv_key) = VALUE #( it_keys[ 1 ]-value OPTIONAL ).
+
+  delete FROM zmedia_grv WHERE filename = @( VALUE #( it_keys[ 1 ]-value OPTIONAL ) ).
+
+  endmethod.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_ZMEDIA_GRV_DPC_EXT->/IWBEP/IF_MGW_APPL_SRV_RUNTIME~GET_STREAM
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_ENTITY_NAME                 TYPE        STRING(optional)
+* | [--->] IV_ENTITY_SET_NAME             TYPE        STRING(optional)
+* | [--->] IV_SOURCE_NAME                 TYPE        STRING(optional)
+* | [--->] IT_KEY_TAB                     TYPE        /IWBEP/T_MGW_NAME_VALUE_PAIR(optional)
+* | [--->] IT_NAVIGATION_PATH             TYPE        /IWBEP/T_MGW_NAVIGATION_PATH(optional)
+* | [--->] IO_TECH_REQUEST_CONTEXT        TYPE REF TO /IWBEP/IF_MGW_REQ_ENTITY(optional)
+* | [<---] ER_STREAM                      TYPE REF TO DATA
+* | [<---] ES_RESPONSE_CONTEXT            TYPE        /IWBEP/IF_MGW_APPL_SRV_RUNTIME=>TY_S_MGW_RESPONSE_ENTITY_CNTXT
+* | [!CX!] /IWBEP/CX_MGW_BUSI_EXCEPTION
+* | [!CX!] /IWBEP/CX_MGW_TECH_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  method /IWBEP/IF_MGW_APPL_SRV_RUNTIME~GET_STREAM.
+
+  DATA(it_keys) = io_tech_request_context->get_keys( ).
+  DATA(lv_key) = VALUE #( it_keys[ 1 ]-value OPTIONAL ).
+
+  if lv_key is NOT INITIAL.
+    select SINGLE * FROM zmedia_grv
+      into @data(ls_zmedia_grv)
+      WHERE filename = @lv_key.
+
+    if sy-subrc is INITIAL.
+      DATA(ls_s_media_resource) = VALUE ty_s_media_resource( mime_type = ls_zmedia_grv-mimetype
+                                                             value = ls_zmedia_grv-value ).
+
+      copy_data_to_ref(
+        EXPORTING
+          is_data = ls_s_media_resource
+        CHANGING
+          cr_data = er_stream
+      ).
+    ENDIF.
+  ENDIF.
+  endmethod.
+
+
+* <SIGNATURE>---------------------------------------------------------------------------------------+
+* | Instance Public Method ZCL_ZMEDIA_GRV_DPC_EXT->/IWBEP/IF_MGW_APPL_SRV_RUNTIME~UPDATE_STREAM
+* +-------------------------------------------------------------------------------------------------+
+* | [--->] IV_ENTITY_NAME                 TYPE        STRING(optional)
+* | [--->] IV_ENTITY_SET_NAME             TYPE        STRING(optional)
+* | [--->] IV_SOURCE_NAME                 TYPE        STRING(optional)
+* | [--->] IS_MEDIA_RESOURCE              TYPE        TY_S_MEDIA_RESOURCE
+* | [--->] IT_KEY_TAB                     TYPE        /IWBEP/T_MGW_NAME_VALUE_PAIR(optional)
+* | [--->] IT_NAVIGATION_PATH             TYPE        /IWBEP/T_MGW_NAVIGATION_PATH(optional)
+* | [--->] IO_TECH_REQUEST_CONTEXT        TYPE REF TO /IWBEP/IF_MGW_REQ_ENTITY_U(optional)
+* | [!CX!] /IWBEP/CX_MGW_BUSI_EXCEPTION
+* | [!CX!] /IWBEP/CX_MGW_TECH_EXCEPTION
+* +--------------------------------------------------------------------------------------</SIGNATURE>
+  method /IWBEP/IF_MGW_APPL_SRV_RUNTIME~UPDATE_STREAM.
+
+  DATA(it_keys) = io_tech_request_context->get_keys( ).
+  DATA(lv_key) = VALUE #( it_keys[ 1 ]-value OPTIONAL ).
+
+  data(ls_zmedia_grv) = VALUE zcl_zmedia_grv_mpc=>ts_media( client = sy-mandt
+                                                            filename = VALUE #( it_keys[ 1 ]-value OPTIONAL )
+                                                            mimetype = is_media_resource-mime_type
+                                                            value = is_media_resource-value ).
+
+  modify zmedia_grv from ls_zmedia_grv.
+
+  endmethod.
+ENDCLASS.
