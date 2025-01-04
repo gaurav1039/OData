@@ -1,0 +1,380 @@
+  METHOD /iwbep/if_mgw_appl_srv_runtime~get_stream.
+
+    DATA: gv_vbeln1 TYPE vbeln,
+          gv_vbeln2 TYPE vbeln,
+          gs_stream TYPE ty_s_media_resource.
+
+    DATA: lv_fmname    TYPE rs38l_fnam,
+          lw_ctr       TYPE ssfctrlop,
+          lw_opt       TYPE ssfcompop,
+          lw_ssfcrescl TYPE ssfcrescl.
+
+    DATA: li_otf      TYPE TABLE OF itcoo,
+          li_pdf_tab  TYPE TABLE OF tline,
+          gv_bin_file TYPE xstring.
+
+    DATA: count TYPE i.
+
+*    ********* Work Area Declaration *********
+    DATA: wa_vbrk     TYPE zts_vbrk,
+          wa_vbrp     TYPE zts_vbrp,
+          wa_tax      TYPE zts_fs_tax,
+          wa_cust_add TYPE adrc,
+          wa_com_add  TYPE adrc,
+          wa_final    TYPE zts_fs_final,
+          wa_header   TYPE zts_header_data,
+          wa_kna1     TYPE kna1,
+          wa_t001     TYPE t001.
+
+
+********* Internal Table Declaration *********
+
+    DATA: it_vbrk     TYPE ztt_vbrk,
+          it_vbrp     TYPE TABLE OF zts_vbrp,
+          it_tax      TYPE ztt_fs_tax,
+          it_cust_add TYPE TABLE OF adrc,
+          it_com_add  TYPE TABLE OF adrc,
+          it_final    TYPE ztt_fs_final,
+          it_header   TYPE ztt_header_data,
+          it_kna1     TYPE TABLE OF kna1,
+          it_t001     TYPE TABLE OF t001.
+
+*    ********* variablr Declaration *********
+    DATA: v_vbeln      TYPE vbrk-vbeln,
+*      lv_fmname     TYPE rs38l_fnam,
+*      lw_ctr        TYPE ssfctrlop,
+*      lw_opt        TYPE ssfcompop,
+*      lv_job_output TYPE ssfcrescl,
+          lt_lines     TYPE TABLE OF tline,
+          lv_size      TYPE i,
+          lv_total_amt TYPE netwr,
+          lv_temp(140) TYPE c,
+*      count         TYPE i,
+          v_path       TYPE ibipparms-path.
+
+
+    TRY.
+        SPLIT it_key_tab[ 1 ]-value AT ',' INTO gv_vbeln1 gv_vbeln2.
+      CATCH cx_root.
+    ENDTRY.
+
+    IF gv_vbeln1 IS NOT INITIAL OR gv_vbeln2 IS NOT INITIAL .
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = gv_vbeln1     " C field
+        IMPORTING
+          output = gv_vbeln1.    " Internal display of INPUT, any category
+
+      CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+        EXPORTING
+          input  = gv_vbeln2     " C field
+        IMPORTING
+          output = gv_vbeln2.
+
+
+      DATA: ls_vbrk      TYPE vbrk,
+
+            r_vbeln      TYPE RANGE OF vbrk-vbeln,
+
+            r_vbeln_line LIKE LINE OF r_vbeln.
+
+      r_vbeln_line-sign = 'I'.
+
+      r_vbeln_line-option = 'BT'.
+
+      r_vbeln_line-low = gv_vbeln1.
+
+      r_vbeln_line-high = gv_vbeln2.
+
+      APPEND r_vbeln_line TO r_vbeln.
+****************************
+*get_data*
+
+      SELECT vbeln fkart knumv bukrs netwr kunag mwsbk FROM vbrk INTO TABLE it_vbrk  WHERE vbeln IN r_vbeln.
+      SORT it_vbrk BY vbeln.
+
+      IF it_vbrk IS NOT INITIAL.
+
+        SELECT vbeln
+               posnr
+               fkimg
+               meins
+               netwr
+               matnr
+               arktx
+               mwsbp FROM vbrp INTO CORRESPONDING FIELDS OF TABLE it_vbrp FOR ALL ENTRIES IN it_vbrk WHERE vbeln = it_vbrk-vbeln.
+
+        SORT it_vbrp BY vbeln posnr.
+
+*      "CUSTOMER ADDRESS
+        SELECT * FROM kna1 INTO CORRESPONDING FIELDS OF TABLE it_kna1 FOR ALL ENTRIES IN it_vbrk WHERE kunnr = it_vbrk-kunag.
+
+        IF it_kna1 IS NOT INITIAL.
+          SELECT * FROM adrc INTO CORRESPONDING FIELDS OF TABLE it_cust_add FOR ALL ENTRIES IN it_kna1 WHERE addrnumber = it_kna1-adrnr.
+        ENDIF.
+*      "SELLER ADDRESS
+        SELECT * FROM t001 INTO CORRESPONDING FIELDS OF TABLE it_t001 FOR ALL ENTRIES IN it_vbrk WHERE bukrs = it_vbrk-bukrs.
+
+        IF it_t001 IS NOT INITIAL.
+          SELECT * FROM adrc INTO CORRESPONDING FIELDS OF TABLE it_com_add FOR ALL ENTRIES IN it_t001 WHERE addrnumber = it_t001-adrnr.
+        ENDIF.
+
+
+        IF it_vbrp IS NOT INITIAL.
+
+          SELECT knumv
+                 kposn
+                 kschl
+                 kawrt
+                 kbetr
+                 kntyp
+                 kwert
+                 waerk FROM prcd_elements INTO CORRESPONDING FIELDS OF TABLE it_tax FOR ALL ENTRIES IN it_vbrp
+                                                                                      WHERE kposn = it_vbrp-posnr
+                                                                                        AND kntyp = 'D'.
+
+          SORT it_tax BY knumv kposn.
+
+        ENDIF.
+
+
+
+*    " ****** IT_FINAL MAPPING**************
+
+        LOOP AT it_vbrk INTO wa_vbrk.
+
+          count = count + 1.
+
+          wa_header-vbeln = wa_vbrk-vbeln.
+          wa_header-fkart = wa_vbrk-fkart.
+
+
+
+*        "***Customer Name****************
+          READ TABLE it_kna1 INTO wa_kna1 WITH KEY kunnr = wa_vbrk-kunag.
+          IF sy-subrc = 0.
+            READ TABLE it_cust_add INTO wa_cust_add WITH KEY addrnumber = wa_kna1-adrnr.
+            IF sy-subrc = 0.
+
+              IF wa_cust_add-name1 IS NOT INITIAL.
+                lv_temp = wa_cust_add-name1.
+              ENDIF.
+
+              IF wa_cust_add-name2 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_cust_add-name2 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              IF wa_cust_add-name3 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_cust_add-name3 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              wa_header-cust_name = lv_temp.
+              CLEAR lv_temp.
+
+
+*        "***Customer Address****************
+
+              IF wa_cust_add-street IS NOT INITIAL.
+                lv_temp = wa_cust_add-street.
+              ENDIF.
+
+              IF wa_cust_add-str_suppl3 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_cust_add-str_suppl3 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              IF wa_cust_add-city2 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_cust_add-city2 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              IF wa_cust_add-city1 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_cust_add-city1 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              IF  wa_cust_add-post_code1 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_cust_add-post_code1 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              wa_header-cust_add = lv_temp.
+              CLEAR lv_temp.
+            ENDIF.
+          ENDIF.
+
+
+*        "***Company Name****************
+          READ TABLE it_t001 INTO wa_t001 WITH KEY bukrs = wa_vbrk-bukrs.
+          IF sy-subrc = 0.
+            READ TABLE it_com_add INTO wa_com_add WITH KEY addrnumber = wa_t001-adrnr.
+            IF sy-subrc = 0.
+              IF wa_com_add-name1 IS NOT INITIAL.
+                lv_temp = wa_com_add-name1.
+              ENDIF.
+
+              IF wa_com_add-name2 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_com_add-name2 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              IF wa_com_add-name3 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_com_add-name3 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+
+              wa_header-com_name = lv_temp.
+              CLEAR lv_temp.
+
+
+
+*        "***Company Address****************
+
+              IF wa_com_add-street IS NOT INITIAL.
+                lv_temp = wa_com_add-street.
+              ENDIF.
+
+              IF wa_com_add-str_suppl3 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_com_add-str_suppl3 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              IF wa_com_add-city2 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_com_add-city1 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              IF wa_com_add-city1 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_com_add-city1 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+              IF wa_com_add-post_code1 IS NOT INITIAL.
+                CONCATENATE lv_temp wa_com_add-post_code1 INTO lv_temp SEPARATED BY ' '.
+              ENDIF.
+
+
+              wa_header-com_add = lv_temp.
+              CLEAR lv_temp.
+
+            ENDIF.
+          ENDIF.
+
+          wa_header-total_amt = wa_vbrk-netwr + wa_vbrk-mwsbk.
+
+          APPEND wa_header TO it_header.
+
+          SORT it_header BY vbeln.
+
+
+          LOOP AT it_vbrp INTO wa_vbrp WHERE vbeln = wa_vbrk-vbeln.
+
+
+            wa_final-vbeln = wa_vbrk-vbeln.
+            wa_final-knumv = wa_vbrk-knumv.
+            wa_final-netwr_k = wa_vbrk-netwr.
+            wa_final-mwsbk = wa_vbrk-mwsbk.
+
+            CALL FUNCTION 'CONVERSION_EXIT_ALPHA_OUTPUT'
+              EXPORTING
+                input  = wa_vbrp-posnr
+              IMPORTING
+                output = wa_final-posnr.
+
+            wa_final-matnr = wa_vbrp-matnr.
+            wa_final-arktx = wa_vbrp-arktx.
+            wa_final-fkimg = wa_vbrp-fkimg.
+            wa_final-meins = wa_vbrp-meins.
+            wa_final-netwr_p = wa_vbrp-netwr.
+            wa_final-mwsbp = wa_vbrp-mwsbp.
+            wa_final-taxable_amt = wa_final-netwr_p + wa_final-mwsbp.
+
+            LOOP AT it_tax INTO wa_tax WHERE knumv = wa_vbrk-knumv AND kposn = wa_vbrp-posnr.
+              IF wa_tax-kschl = 'JOSG'.
+                wa_final-sgst_rate = wa_tax-kbetr.
+                wa_final-sgst_amt = wa_tax-kwert.
+              ELSEIF wa_tax-kschl = 'JOCG' .
+                wa_final-cgst_rate = wa_tax-kbetr.
+                wa_final-cgst_amt = wa_tax-kwert.
+              ELSEIF wa_tax-kschl = 'JOIG'.
+                wa_final-igst_rate = wa_tax-kbetr.
+                wa_final-igst_amt = wa_tax-kwert.
+              ENDIF.
+            ENDLOOP.
+
+
+
+            APPEND wa_final TO it_final.
+
+
+          ENDLOOP.
+
+        ENDLOOP.
+
+        SORT it_final BY vbeln posnr.
+
+      ENDIF.
+
+
+
+
+
+
+****************************
+
+      CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+        EXPORTING
+          formname = 'Z_2341_FORM10'
+        IMPORTING
+          fm_name  = lv_fmname.
+
+      CLEAR lw_ctr-getotf.
+
+      lw_ctr-no_dialog = 'X'.
+      lw_ctr-getotf = 'X'.
+      lw_ctr-preview = space.
+      lw_opt-tddest = 'LP01'.
+
+      CALL FUNCTION lv_fmname
+        EXPORTING
+          control_parameters = lw_ctr
+          output_options     = lw_opt
+          user_settings      = ' '
+          it_final           = it_final
+          it_vbrk            = it_vbrk
+          it_header          = it_header
+          count              = count
+        IMPORTING
+          job_output_info    = lw_ssfcrescl.
+
+      li_otf = lw_ssfcrescl-otfdata[].
+
+*Convert OTF to PDF
+      CALL FUNCTION 'CONVERT_OTF'
+        EXPORTING
+          format                = 'PDF'
+        IMPORTING
+*         bin_filesize          = lv_size
+          bin_file              = gv_bin_file
+        TABLES
+          otf                   = li_otf
+          lines                 = li_pdf_tab
+        EXCEPTIONS
+          err_max_linewidth     = 1
+          err_format            = 2
+          err_conv_not_possible = 3
+          err_bad_otf           = 4
+          OTHERS                = 5.
+      IF sy-subrc <> 0.
+        MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+                    WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      ENDIF.
+
+      gs_stream-mime_type = 'application/pdf'.
+      gs_stream-value = gv_bin_file.
+
+      copy_data_to_ref(
+        EXPORTING
+          is_data = gs_stream
+        CHANGING
+          cr_data = er_stream
+      ).
+
+
+
+    ENDIF.
+
+  ENDMETHOD.
