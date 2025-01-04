@@ -1,0 +1,8 @@
+Media Handling (Image, Audio, Video, PDF, ZIP, Excel Sheet, Text Files)
+
+1. Set Entity type as media in SEGW :- METADATA (hasStream)
+2. Mime type property set as contetnt type in MPC_EXT
+3. create stream :- /sap/opu/odata/SAP/ZMEDIA_SRV/Mediaset 			+ POST + Payload + SLUG variable
+4. get_stream 	 :- /sap/opu/odata/SAP/ZMEDIA_SRV/Mediaset('ram3')/$value	+ GET
+5. update_stream :- /sap/opu/odata/SAP/ZMEDIA_SRV/Mediaset('ram3')/$value 	+ PUT + payload
+6. delete stream :- /sap/opu/odata/SAP/ZMEDIA_SRV/MediaSet('ram3')/$value 	+ DELETE
