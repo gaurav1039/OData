@@ -15,6 +15,8 @@
 
       SELECT * FROM vbak INTO CORRESPONDING FIELDS OF er_entity
                   WHERE vbeln = lv_vbeln.
+""**use select single
+"" check whether endselect is needed.
       ENDSELECT.
 
     ENDIF.
